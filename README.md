@@ -42,6 +42,8 @@ Verifying upi success (mock)
 - ✅ **Payment Gateway, live-validated**: `orders create/get`, `payments list`, `links create/get`, order pay, `simulate`, `refunds create`, `settlements get` + `settlements today`, `disputes order/get`.
 - ✅ **Signed webhook delivery confirmed live** — the sandbox delivers signed webhooks; this CLI's signature verification matches Cashfree's exactly.
 - ✅ **`listen`** — forward webhooks to localhost and verify signatures locally, no ngrok (mock + cross-process proven).
+- ✅ **Real-mode webhooks via `--tunnel`** — `verify --tunnel` / `listen --tunnel` open a cloudflared tunnel so live Cashfree webhooks reach localhost; graceful fallback if cloudflared is absent.
+- ✅ **OpenAPI codegen** — `npm run codegen` generates typed defs from Cashfree's live specs (PG/Payouts/Verification) for drift-checking.
 - ✅ **`init`** — scaffolds `.env.example`, a webhook handler with real signature verification, and an `AGENTS.md` so coding agents stop guessing the API.
 - ✅ **`doctor`** — preflight: credentials, API version, connectivity, mode.
 - ✅ **`mcp serve`** — exposes the surface as 8 MCP tools over stdio JSON-RPC.
@@ -52,9 +54,8 @@ Verifying upi success (mock)
 - ⏳ **Secure ID** (PAN, bank account, UPI verification) — client built; needs signature auth + IP allowlisting handled for a CLI context; live validation pending.
 - ⏳ **Payouts** (transfers, beneficiaries) — client built; needs IP allowlisting + V2 body finalized; live validation pending.
 - ⏳ **Subscriptions** (UPI Autopay, plans, mandates) — commands built and grounded in the docs; pending sandbox product enablement; live validation pending.
-- ⏳ **Real-mode `listen` auto-tunnel** — so live webhooks reach localhost without a manual tunnel (delivery + signature already proven).
-- ⏳ **Distribution** — publish to npm for `npx cashfree-cli`, add a Homebrew tap.
-- ⏳ **Codegen** — generate the API client from the OpenAPI spec so it never drifts.
+- ⏳ **Publish to npm** for `npx cashfree-cli` (package is publish-ready), plus a Homebrew tap.
+- ⏳ **Migrate the client to generated types** — the `npm run codegen` pipeline exists; wiring the client to it is the follow-up.
 - ⏳ **More `init` languages** — Python and PHP scaffolds.
 
 ## The commands

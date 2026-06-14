@@ -1,6 +1,7 @@
 import type { CommandContext } from "../core/context.js";
-import { type Input, flagStr, flagNum } from "./_args.js";
+import { type Input, flagStr, flagNum, flagBool } from "./_args.js";
 import { startReceiver, type ReceivedWebhook } from "../core/receiver.js";
+import { startTunnel, type Tunnel } from "../core/tunnel.js";
 import { registerSubscription, unregisterSubscription, MOCK_WEBHOOK_SECRET } from "../api/mock-client.js";
 import { getCredentials } from "../config/store.js";
 import { CashfreeError } from "../core/errors.js";
@@ -33,19 +34,30 @@ export async function listen(ctx: CommandContext, input: Input): Promise<void> {
 
   const receiver = await startReceiver({ secret, port, onEvent });
 
+  let tunnel: Tunnel | null = null;
   if (ctx.mock) {
     registerSubscription(receiver.url);
     ctx.out.heading(`Listening on ${receiver.url} (mock sandbox)`);
     ctx.out.note("In another terminal run `cashfree simulate payment ...` or `cashfree verify --mock`.");
+  } else if (flagBool(input.values, "tunnel")) {
+    tunnel = await startTunnel(receiver.port);
+    if (tunnel) {
+      ctx.out.heading(`Listening on ${tunnel.url}/cashfree-webhook (${ctx.mode})`);
+      ctx.out.note(`Public tunnel -> ${receiver.url}. Set this URL as your dashboard webhook, or an order's notify_url.`);
+    } else {
+      ctx.out.heading(`Listening on ${receiver.url} (${ctx.mode})`);
+      ctx.out.note("tunnel unavailable (cloudflared missing or rate-limited); point your own tunnel/webhook at this address.");
+    }
   } else {
     ctx.out.heading(`Listening on ${receiver.url} (${ctx.mode})`);
-    ctx.out.note("Point a tunnel (cloudflared/ngrok) or your registered webhook URL at this address.");
+    ctx.out.note("Add --tunnel (needs cloudflared) for a public URL, or point your own tunnel/webhook at this address.");
   }
   if (forwardTo) ctx.out.note(`Forwarding verified events to ${forwardTo}`);
 
   await new Promise<void>((resolveWait) => {
     const shutdown = async () => {
       if (ctx.mock) unregisterSubscription(receiver.url);
+      if (tunnel) await tunnel.close();
       await receiver.close();
       ctx.out.note(`\nStopped after ${count} event(s).`);
       resolveWait();

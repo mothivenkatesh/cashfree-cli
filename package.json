@@ -8,6 +8,7 @@
   },
   "files": [
     "dist",
+    "!dist/test",
     "llms.txt",
     "README.md"
   ],
@@ -19,6 +20,7 @@
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "test": "node --test dist/test/",
+    "codegen": "openapi-typescript https://raw.githubusercontent.com/cashfree/cashfree-mcp/main/src/openapi/openapi-PG.json -o src/api/generated/pg.ts && openapi-typescript https://raw.githubusercontent.com/cashfree/cashfree-mcp/main/src/openapi/openapi-PO.json -o src/api/generated/payout.ts && openapi-typescript https://raw.githubusercontent.com/cashfree/cashfree-mcp/main/src/openapi/openapi-VRS.json -o src/api/generated/verification.ts",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -34,6 +36,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.14.0",
+    "openapi-typescript": "^7.13.0",
     "typescript": "^5.5.0"
   }
 }

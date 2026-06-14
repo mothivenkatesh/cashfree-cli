@@ -13,3 +13,6 @@ product-note.md
 eng-asks.md
 evals/
 research/
+
+# generated API types (run `npm run codegen` to regenerate)
+src/api/generated/*.ts

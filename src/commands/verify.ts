@@ -2,9 +2,10 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import type { CommandContext } from "../core/context.js";
-import { type Input, flagStr, flagNum } from "./_args.js";
+import { type Input, flagStr, flagNum, flagBool } from "./_args.js";
 import { CashfreeError } from "../core/errors.js";
 import { startReceiver, type ReceivedWebhook } from "../core/receiver.js";
+import { startTunnel, type Tunnel } from "../core/tunnel.js";
 import {
   registerSubscription,
   unregisterSubscription,
@@ -51,9 +52,22 @@ export async function verify(ctx: CommandContext, input: Input): Promise<void> {
   });
   if (ctx.mock) registerSubscription(receiver.url);
 
+  // Real mode: open a public tunnel so live webhooks reach this local receiver.
+  let tunnel: Tunnel | null = null;
+  let notifyUrl = flagStr(input.values, "notify-url");
+  if (!ctx.mock && flagBool(input.values, "tunnel")) {
+    tunnel = await startTunnel(receiver.port);
+    if (tunnel) {
+      notifyUrl = `${tunnel.url}/cashfree-webhook`;
+      ctx.out.step(true, `tunnel  ${tunnel.url}`);
+    } else {
+      ctx.out.step("warn", "tunnel  unavailable (cloudflared missing or rate-limited); webhook leg will be skipped");
+    }
+  }
+  const expectWebhook = ctx.mock || tunnel !== null;
+
   try {
-    // 2. Create the order.
-    const notifyUrl = flagStr(input.values, "notify-url");
+    // 2. Create the order (notify_url routes the webhook back through the tunnel).
     const order = await client.createOrder({
       order_amount: amount,
       order_currency: "INR",
@@ -78,18 +92,22 @@ export async function verify(ctx: CommandContext, input: Input): Promise<void> {
       });
     }
 
-    // 4. Wait for the webhook (mock delivers locally; real needs a tunnel).
+    // 4. Wait for the webhook. Mock delivers locally; real mode delivers through
+    //    the tunnel if one was opened. Otherwise the leg is skipped honestly.
     let webhookReceived = false;
     let signatureValid: boolean | null = null;
-    if (ctx.mock) {
-      const timeout = setTimeout(() => settle(null), 5000);
+    if (expectWebhook) {
+      const timeout = setTimeout(() => settle(null), tunnel ? 35000 : 5000);
       const event = await webhookPromise;
       clearTimeout(timeout);
       webhookReceived = !!event;
       signatureValid = event ? event.signatureValid : null;
-      ctx.out.step(webhookReceived && !!signatureValid, `webhook received  signature ${signatureValid ? "valid" : event ? event.reason : "not received"}`);
+      ctx.out.step(
+        webhookReceived && !!signatureValid,
+        `webhook received  signature ${signatureValid ? "valid" : event ? event.reason : "not received (timed out)"}`,
+      );
     } else {
-      ctx.out.step("warn", "webhook  skipped locally (needs `cashfree listen` + a tunnel in real mode)");
+      ctx.out.step("warn", "webhook  skipped locally (add --tunnel with cloudflared installed, or run `cashfree listen`)");
     }
 
     // 5. Cross-check the authoritative API. This is the truth, not the webhook.
@@ -99,7 +117,7 @@ export async function verify(ctx: CommandContext, input: Input): Promise<void> {
     ctx.out.step(apiCrosscheckPassed, `api cross-check  order_status=${fresh.order_status} (expected ${expectPaid ? "PAID" : "not PAID"})`);
 
     // 6. Verdict + artifact.
-    const passed = apiCrosscheckPassed && (ctx.mock ? webhookReceived && signatureValid === true : true);
+    const passed = apiCrosscheckPassed && (expectWebhook ? webhookReceived && signatureValid === true : true);
     const artifact = {
       tool: "cashfree verify",
       mode: ctx.mock ? "sandbox-mock" : ctx.mode,
@@ -109,6 +127,7 @@ export async function verify(ctx: CommandContext, input: Input): Promise<void> {
       cf_payment_id: pay.cf_payment_id,
       webhook_received: webhookReceived,
       webhook_signature_valid: signatureValid,
+      tunnel_url: tunnel?.url ?? null,
       api_order_status: fresh.order_status,
       api_crosscheck_passed: apiCrosscheckPassed,
       passed,
@@ -133,6 +152,7 @@ export async function verify(ctx: CommandContext, input: Input): Promise<void> {
     }
   } finally {
     if (ctx.mock) unregisterSubscription(receiver.url);
+    if (tunnel) await tunnel.close();
     await receiver.close();
   }
 }

@@ -120,6 +120,7 @@ const OPTIONS = {
   "max-amount": { type: "string" },
   "subscription-id": { type: "string" },
   "dispute-id": { type: "string" },
+  tunnel: { type: "boolean" },
 } as const;
 
 const HELP = `cashfree ${VERSION} - agent-native CLI for Cashfree Payments
