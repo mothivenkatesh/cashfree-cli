@@ -9,8 +9,8 @@ Built by [Mothi Venkatesh](https://github.com/mothivenkatesh) — Product Market
 > Sandbox by default. Runs fully offline with `--mock` — no keys, no setup.
 
 ```bash
-git clone https://github.com/mothivenkatesh/cashfree-cli-oss
-cd cashfree-cli-oss && npm install && npm run build
+git clone https://github.com/mothivenkatesh/cashfree-cli
+cd cashfree-cli && npm install && npm run build
 node dist/index.js verify --mock
 ```
 
