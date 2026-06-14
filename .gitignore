@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.log
+.cashfree/
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# internal strategy docs — NOT for the public repo (kept local only)
+product-definition.md
+product-note.md
+eng-asks.md
+evals/
+research/

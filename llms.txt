@@ -1,0 +1,35 @@
+# Cashfree CLI
+
+> Agent-native CLI for Cashfree Payments. Proves an integration works end to end
+> (init, simulate, listen, verify) for developers and the AI agents they build
+> with. Sandbox by default. Zero runtime dependencies. Node 20+.
+
+## Run
+
+- `cashfree verify --mock`: prove the loop offline, no credentials. Writes an artifact to .cashfree/.
+- `cashfree init`: scaffold .env.example, a webhook handler with real signature verification, and AGENTS.md.
+- `cashfree simulate payment --payment-id <cf_payment_id> --status SUCCESS|FAILED`: force a sandbox outcome.
+- `cashfree listen --forward-to <url>`: forward webhooks to localhost, verify signatures locally.
+- `cashfree doctor`: preflight checks (credentials, api version, connectivity, mode).
+- `cashfree mcp serve`: expose the same surface to an agent over MCP (stdio JSON-RPC).
+
+## Conventions for agents
+
+- Add `--json` for machine output; it is auto-on when stdout is not a TTY.
+- Add `--mock` to run against the built-in sandbox simulator with no credentials.
+- Sandbox is default. `--live` targets production; live money movement also needs `--confirm`.
+- Exit codes: 0 ok, 1 runtime, 2 auth, 3 validation, 4 confirmation-required, 5 api, 6 not-found, 7 rate-limited, 8 network.
+- Errors are structured on stderr with code, suggested_fix, retry_after, docs.
+
+## API facts (do not guess these)
+
+- Base URL sandbox: https://sandbox.cashfree.com/pg ; live: https://api.cashfree.com/pg
+- Header x-api-version: 2025-01-01 ; auth headers x-client-id, x-client-secret.
+- Webhook signature = base64(HMAC-SHA256(x-webhook-timestamp + RAW_BODY, client_secret)). Sign the raw body.
+- A webhook is a signal, not the truth. Confirm status via GET /orders/{order_id} before fulfilling.
+- order_status enum: ACTIVE, PAID, EXPIRED, TERMINATED, TERMINATION_REQUESTED. Only PAID is paid.
+
+## Resources
+
+- orders create|get, payments list, refunds create|get, links create|get, settlements get
+- payouts transfer|get (money movement, gated), secureid pan, secureid bank-account

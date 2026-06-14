@@ -1,0 +1,39 @@
+{
+  "name": "cashfree-cli",
+  "version": "0.1.0",
+  "description": "Agent-native CLI for Cashfree Payments. Prove an integration works end to end: init, simulate, listen, verify.",
+  "type": "module",
+  "bin": {
+    "cashfree": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "llms.txt",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "test": "node --test dist/test/",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "cashfree",
+    "payments",
+    "cli",
+    "upi",
+    "webhooks",
+    "mcp",
+    "agent"
+  ],
+  "author": "Mothi Venkatesh",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0"
+  }
+}
