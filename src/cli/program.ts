@@ -13,9 +13,11 @@ import {
   linksCreate,
   linksGet,
   settlementsGet,
+  settlementsToday,
 } from "../commands/resources.js";
 import { simulatePayment } from "../commands/simulate.js";
-import { payoutsTransfer, payoutsGet } from "../commands/payouts.js";
+import { payoutsTransfer, payoutsGet, payoutsBalance } from "../commands/payouts.js";
+import { disputesByOrder, disputesGet } from "../commands/disputes.js";
 import { secureidPan, secureidBankAccount } from "../commands/secureid.js";
 import {
   subscriptionsCreatePlan,
@@ -46,9 +48,13 @@ const ROUTES: Record<string, Handler> = {
   "links create": linksCreate,
   "links get": linksGet,
   "settlements get": settlementsGet,
+  "settlements today": settlementsToday,
+  "disputes order": disputesByOrder,
+  "disputes get": disputesGet,
   "simulate payment": simulatePayment,
   "payouts transfer": payoutsTransfer,
   "payouts get": payoutsGet,
+  "payouts balance": payoutsBalance,
   "secureid pan": secureidPan,
   "secureid bank-account": secureidBankAccount,
   "subscriptions create-plan": subscriptionsCreatePlan,
@@ -113,6 +119,7 @@ const OPTIONS = {
   interval: { type: "string" },
   "max-amount": { type: "string" },
   "subscription-id": { type: "string" },
+  "dispute-id": { type: "string" },
 } as const;
 
 const HELP = `cashfree ${VERSION} - agent-native CLI for Cashfree Payments
@@ -132,8 +139,9 @@ RESOURCES
   payments list <order_id>
   refunds create --order <id> --amount 50
   links create --amount 100           links get <id>
-  settlements get <order_id>
-  payouts transfer --amount 500 --vpa name@bank    payouts get <id>
+  settlements get <order_id>          settlements today
+  disputes order <order_id>           disputes get <id>
+  payouts transfer --amount 500 --vpa name@bank    payouts get <id>    payouts balance
   secureid pan --pan ABCDE1234F --name "Name"
   secureid bank-account --account 001020 --ifsc HDFC0001234
   subscriptions create-plan --amount 499 --interval-type MONTH

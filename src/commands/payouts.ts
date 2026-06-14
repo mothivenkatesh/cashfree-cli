@@ -46,3 +46,11 @@ export async function payoutsGet(ctx: CommandContext, input: Input): Promise<voi
   if (!transferId) throw CashfreeError.validation("Provide a transfer id (positional) or --transfer-id.");
   ctx.out.result(await ctx.getClient().getTransfer(transferId));
 }
+
+/** `cashfree payouts balance` — available payout balance (ported from the Go CLI). */
+export async function payoutsBalance(ctx: CommandContext, _input: Input): Promise<void> {
+  const bal = await ctx.getClient().getPayoutBalance();
+  const available = bal.availableBalance ?? bal.available_balance;
+  ctx.out.step(true, `Available  ₹${available ?? "?"}`);
+  ctx.out.result(bal);
+}

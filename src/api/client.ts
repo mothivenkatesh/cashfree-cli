@@ -21,6 +21,8 @@ import type {
   CreateSubscriptionRequest,
   SubscriptionEntity,
   SubscriptionPaymentEntity,
+  DisputeEntity,
+  PayoutBalance,
 } from "./types.js";
 
 /**
@@ -46,10 +48,16 @@ export interface CashfreeClient {
 
   // Settlements
   getSettlements(orderId: string): Promise<SettlementEntity[]>;
+  getRecentSettlements(): Promise<SettlementEntity[]>; // account-level (today's)
+
+  // Disputes (no list-all endpoint exists; per-order only)
+  getDisputesByOrder(orderId: string): Promise<DisputeEntity[]>;
+  getDispute(disputeId: string): Promise<DisputeEntity>;
 
   // Payouts
   createTransfer(req: CreateTransferRequest): Promise<TransferEntity>;
   getTransfer(transferId: string): Promise<TransferEntity>;
+  getPayoutBalance(): Promise<PayoutBalance>;
 
   // Secure ID
   verifyPan(req: PanVerifyRequest): Promise<PanVerifyResponse>;

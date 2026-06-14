@@ -26,6 +26,8 @@ import type {
   CreateSubscriptionRequest,
   SubscriptionEntity,
   SubscriptionPaymentEntity,
+  DisputeEntity,
+  PayoutBalance,
 } from "./types.js";
 
 export interface Credentials {
@@ -122,6 +124,25 @@ export class HttpClient implements CashfreeClient {
       `/orders/${encodeURIComponent(orderId)}/settlements`,
     );
   }
+  async getRecentSettlements(): Promise<SettlementEntity[]> {
+    // Account-level settlements = POST /settlements with a date filter (today).
+    const now = new Date();
+    const day = (h: number, m: number, s: number) =>
+      new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), h, m, s)).toISOString();
+    const r = await this.request<unknown>("pg", "POST", "/settlements", {
+      pagination: { limit: 100, cursor: null },
+      filters: { start_date: day(0, 0, 0), end_date: day(23, 59, 59) },
+    });
+    return normalizeList<SettlementEntity>(r);
+  }
+  async getDisputesByOrder(orderId: string): Promise<DisputeEntity[]> {
+    // No list-all-disputes endpoint exists; disputes are fetched per order.
+    const r = await this.request<unknown>("pg", "GET", `/orders/${encodeURIComponent(orderId)}/disputes`);
+    return normalizeList<DisputeEntity>(r);
+  }
+  getDispute(disputeId: string) {
+    return this.request<DisputeEntity>("pg", "GET", `/disputes/${encodeURIComponent(disputeId)}`);
+  }
   createTransfer(req: CreateTransferRequest) {
     return this.request<TransferEntity>("payout", "POST", "/transfers", req);
   }
@@ -131,6 +152,32 @@ export class HttpClient implements CashfreeClient {
       "GET",
       `/transfers?transfer_id=${encodeURIComponent(transferId)}`,
     );
+  }
+  async getPayoutBalance(): Promise<PayoutBalance> {
+    // Payouts use a separate host + a two-step bearer-token flow (authorize -> getBalance).
+    const host = this.mode === "live" ? "https://payout-api.cashfree.com" : "https://payout-gamma.cashfree.com";
+    let token: string;
+    try {
+      const a = await fetch(`${host}/payout/v1/authorize`, {
+        method: "POST",
+        headers: { "X-Client-Id": this.creds.clientId, "X-Client-Secret": this.creds.clientSecret },
+      });
+      const aj = (await a.text().then((t) => (t ? JSON.parse(t) : {}))) as { data?: { token?: string }; message?: string };
+      if (!a.ok || !aj?.data?.token) {
+        throw CashfreeError.auth(`Payout authorize failed: ${aj?.message ?? a.status}. Payouts needs IP whitelisting + valid payout keys.`);
+      }
+      token = aj.data.token;
+    } catch (err) {
+      if (err instanceof CashfreeError) throw err;
+      throw CashfreeError.network(err instanceof Error ? err.message : String(err));
+    }
+    const b = await fetch(`${host}/payout/v1/getBalance`, { headers: { Authorization: `Bearer ${token}` } });
+    const text = await b.text();
+    const bj = text ? JSON.parse(text) : {};
+    if (!b.ok) {
+      throw new CashfreeError({ code: "api_error", message: `Payout balance error (${b.status}).`, exitCode: ExitCode.API, detail: text });
+    }
+    return (bj?.data ?? bj) as PayoutBalance;
   }
   verifyPan(req: PanVerifyRequest) {
     return this.request<PanVerifyResponse>("verification", "POST", "/pan-lite", req);
@@ -183,6 +230,13 @@ function safeJson(text: string): unknown {
   } catch {
     return { raw: text };
   }
+}
+
+/** Cashfree list endpoints sometimes wrap the array as {items} or {data}. */
+function normalizeList<T>(r: unknown): T[] {
+  if (Array.isArray(r)) return r as T[];
+  const obj = r as { items?: T[]; data?: T[] } | null;
+  return obj?.items ?? obj?.data ?? [];
 }
 
 function mapHttpError(res: Response, payload: unknown, path: string): CashfreeError {

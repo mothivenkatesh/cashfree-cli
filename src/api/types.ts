@@ -146,8 +146,26 @@ export interface SettlementEntity {
   order_id: string;
   settlement_amount: number;
   settlement_currency: string;
+  settlement_service_charge?: number;
+  service_charge?: number;
+  settlement_status?: string;
   payment_time?: string;
   transfer_utr?: string;
+}
+
+export interface DisputeEntity {
+  dispute_id: string;
+  order_id?: string;
+  dispute_amount?: number;
+  dispute_status?: string;
+  reason_description?: string;
+  respond_by?: string;
+}
+
+export interface PayoutBalance {
+  availableBalance?: number;
+  available_balance?: number;
+  [k: string]: unknown;
 }
 
 // ---- Payouts ----

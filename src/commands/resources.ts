@@ -96,3 +96,26 @@ export async function settlementsGet(ctx: CommandContext, input: Input): Promise
   const settlements = await ctx.getClient().getSettlements(orderIdFrom(input));
   ctx.out.result(settlements);
 }
+
+/** `cashfree settlements today` — daily Gross / Fees / Net summary (ported from the Go CLI). */
+export async function settlementsToday(ctx: CommandContext, _input: Input): Promise<void> {
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const items = await ctx.getClient().getRecentSettlements();
+  const gross = items.reduce((s, x) => s + (Number(x.settlement_amount) || 0), 0);
+  const fees = items.reduce((s, x) => s + (Number(x.settlement_service_charge ?? x.service_charge) || 0), 0);
+  const summary = {
+    gross: round2(gross),
+    fees: round2(fees),
+    net: round2(gross - fees),
+    batches: items.length,
+    currency: items[0]?.settlement_currency ?? "INR",
+  };
+  if (!ctx.out.isJson) {
+    ctx.out.heading("Today's settlements");
+    ctx.out.step(true, `Gross   ₹${summary.gross}`);
+    ctx.out.step(true, `Fees    ₹${summary.fees}`);
+    ctx.out.step(true, `Net     ₹${summary.net}`);
+    ctx.out.step(true, `Batches ${summary.batches}`);
+  }
+  ctx.out.result(summary);
+}

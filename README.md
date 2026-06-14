@@ -39,7 +39,7 @@ Verifying upi success (mock)
 ## What works today
 
 - ✅ **`verify` — the full loop, validated against the live Cashfree sandbox**: real order → pay → simulate → webhook → signature match → API cross-check → typed artifact.
-- ✅ **Payment Gateway, live-validated**: `orders create/get`, `payments list`, `links create/get`, order pay, `simulate`, `refunds create`, `settlements get`.
+- ✅ **Payment Gateway, live-validated**: `orders create/get`, `payments list`, `links create/get`, order pay, `simulate`, `refunds create`, `settlements get` + `settlements today`, `disputes order/get`.
 - ✅ **Signed webhook delivery confirmed live** — the sandbox delivers signed webhooks; this CLI's signature verification matches Cashfree's exactly.
 - ✅ **`listen`** — forward webhooks to localhost and verify signatures locally, no ngrok (mock + cross-process proven).
 - ✅ **`init`** — scaffolds `.env.example`, a webhook handler with real signature verification, and an `AGENTS.md` so coding agents stop guessing the API.
@@ -72,10 +72,11 @@ cashfree orders create --amount 100            # orders get <id>
 cashfree payments list <order_id>
 cashfree refunds create --order <id> --amount 50
 cashfree links create --amount 100             # links get <id>
-cashfree settlements get <order_id>
+cashfree settlements get <order_id>            # settlements today
+cashfree disputes order <order_id>             # disputes get <id>
 
 # roadmap surfaces (built, validation pending)
-cashfree payouts transfer --amount 500 --vpa name@bank
+cashfree payouts transfer --amount 500 --vpa name@bank   # payouts balance
 cashfree secureid pan --pan ABCDE1234F --name "Name"
 cashfree subscriptions create-plan --amount 499 --interval-type MONTH
 

@@ -27,6 +27,8 @@ import type {
   CreateSubscriptionRequest,
   SubscriptionEntity,
   SubscriptionPaymentEntity,
+  DisputeEntity,
+  PayoutBalance,
   PaymentStatus,
   OrderStatus,
   WebhookEvent,
@@ -356,6 +358,49 @@ export class MockClient implements CashfreeClient {
         transfer_utr: id("UTR"),
       },
     ];
+  }
+
+  async getRecentSettlements(): Promise<SettlementEntity[]> {
+    // Derive a "today" view from paid orders in the mock state.
+    const state = load();
+    return Object.values(state.orders)
+      .filter((o) => o.order_status === "PAID")
+      .map((o) => ({
+        cf_settlement_id: id("MOCK_setl"),
+        order_id: o.order_id,
+        settlement_amount: Math.round(o.order_amount * 0.98 * 100) / 100,
+        settlement_currency: o.order_currency,
+        settlement_service_charge: Math.round(o.order_amount * 0.02 * 100) / 100,
+        settlement_status: "SETTLED",
+      }));
+  }
+
+  async getDisputesByOrder(orderId: string): Promise<DisputeEntity[]> {
+    return [
+      {
+        dispute_id: "MOCK_dispute_1",
+        order_id: orderId,
+        dispute_amount: 500,
+        dispute_status: "DISPUTE_CREATED",
+        reason_description: "Product not received",
+        respond_by: "2026-07-01",
+      },
+    ];
+  }
+
+  async getDispute(disputeId: string): Promise<DisputeEntity> {
+    return {
+      dispute_id: disputeId,
+      order_id: "order_mock_paid",
+      dispute_amount: 500,
+      dispute_status: "DISPUTE_CREATED",
+      reason_description: "Product not received",
+      respond_by: "2026-07-01",
+    };
+  }
+
+  async getPayoutBalance(): Promise<PayoutBalance> {
+    return { availableBalance: 100000 };
   }
 
   async createTransfer(req: CreateTransferRequest): Promise<TransferEntity> {
